@@ -1,105 +1,112 @@
-# Olist E-Commerce — An End-to-End ELT Pipeline
+# Olist E-Commerce | End-to-End Data Pipeline
 
-An end-to-end ELT data pipeline built with **Databricks, Python (PySpark), and SQL**, using the Brazilian Olist E-Commerce dataset. The project implements a Medallion Architecture (Bronze, Silver, and Gold) to ingest, transform, clean, and model raw e-commerce data into analytics-ready datasets.
+An end-to-end ELT pipeline built with **Databricks, PySpark, and SQL**, transforming raw Brazilian e-commerce data into structured analytical datasets through the Medallion Architecture.
 
-## Project Overview
-
-The goal of this project is to build a scalable analytical data pipeline that transforms raw e-commerce data into structured datasets for business intelligence and analytical queries.
-
-The pipeline processes data from multiple sources and organizes it into three architectural layers:
-
-- **Bronze:** Raw data ingestion and initial storage.
-- **Silver:** Data cleaning, standardization, and transformation.
-- **Gold:** Business-oriented aggregations, analytical dimensions, and fact tables.
+The project covers data ingestion, transformation, data quality, and analytical modeling, using Databricks Lakeflow Spark Declarative Pipelines and SQL Materialized Views.
 
 ## Architecture
 
+The pipeline follows the Medallion Architecture, separating data processing into three layers:
+
 ```text
-                 Data Sources
-                      |
-                      v
-              Supabase Storage
-                 (S3 API)
-                      |
-                      v
-               BRONZE LAYER
-              Raw Data Ingestion
-                      |
-                      v
-               SILVER LAYER
-          Data Cleaning & Transformation
-                      |
-                      v
-                GOLD LAYER
-          Analytical Data Modeling
-                      |
-                      v
-             Analytics & Reporting
+Supabase Storage (S3-compatible API)
+                |
+                v
+        BRONZE LAYER
+     Raw Data Ingestion
+     Python | boto3 | pandas
+                |
+                v
+         SILVER LAYER
+   Cleaning & Standardization
+   PySpark | Data Quality
+                |
+                v
+          GOLD LAYER
+      Analytical Data Models
+       SQL | Materialized Views
+                |
+                v
+       Analytics & Reporting
 ```
+
+### Bronze — Data Ingestion
+
+The ingestion layer retrieves CSV files from Supabase Storage through its S3-compatible API.
+
+Implementation highlights:
+- Python integration using boto3.
+- CSV retrieval and parsing with pandas.
+- Conversion into Spark DataFrames.
+- Publication of raw datasets as Bronze materialized views.
+
+### Silver — Data Transformation
+
+The Silver layer prepares the ingested data for analytical consumption using PySpark.
+
+Transformations include:
+- Data type casting and timestamp parsing.
+- Standardization of customer and seller locations.
+- Product category translation and completeness checks.
+- Review deduplication and text normalization.
+- Payment and shipping validation.
+- Business-rule implementation and data quality flags.
+
+Examples of implemented quality indicators:
+- Inconsistent customer locations across orders.
+- Missing order approval timestamps.
+- Invalid delivery date sequences.
+- Late deliveries.
+- Incomplete product records.
+- Shipping and payment inconsistencies.
+
+### Gold — Analytical Modeling
+
+The Gold layer implements business-oriented datasets using SQL Materialized Views.
+
+Each model has a defined grain and analytical purpose.
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `full_order` | One row per order | Order value, payment methods, purchasing behavior and customer reviews |
+| `full_logistics` | One row per delivered order | Delivery performance, delays and regional logistics |
+| `dim_customers` | One row per unique customer | Customer spending, repeat purchases and geographic distribution |
+| `dim_products` | One row per product | Product revenue, sales volume, categories and reviews |
+| `dim_sellers` | One row per seller | Seller revenue, sales performance and delivery metrics |
+
+The models incorporate aggregated metrics from multiple Silver datasets, with business rules applied according to each analytical requirement.
 
 ## Technology Stack
 
-| Technology | Purpose |
+| Technology | Application |
 |---|---|
-| Databricks | Data engineering platform |
-| Python | Data ingestion and processing |
+| Databricks | Data engineering environment |
+| Python | Ingestion and data processing |
 | PySpark | Distributed data transformations |
-| SQL | Data modeling and analytical queries |
-| Delta Lake | Structured data storage |
-| Unity Catalog | Data organization and governance |
-| boto3 | S3-compatible object storage access |
+| SQL | Analytical modeling and aggregations |
+| Lakeflow Spark Declarative Pipelines | Pipeline transformations and materialized views |
+| Delta Lake | Data storage |
 | Supabase Storage | Source data storage |
+| boto3 | S3-compatible API integration |
+| pandas | CSV parsing during ingestion |
+| Git & GitHub | Source code versioning |
 
 ## Data Source
 
-The project uses the **Brazilian E-Commerce Public Dataset by Olist**, containing information about orders, customers, products, sellers, payments, reviews.
+The project uses the [Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
 
-Main datasets include:
+The dataset contains approximately 100,000 orders and relational information covering:
 
 - Customers
 - Orders
-- Order Items
+- Order items
 - Payments
 - Products
 - Sellers
 - Reviews
-- Product Category Translation
+- Product category translations
 
-Source: [Olist Brazilian E-Commerce Dataset — Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
-
-## Data Layers
-
-### Bronze
-
-Responsible for ingesting and storing the source datasets in their initial form. The ingestion process integrates with Supabase Storage through its S3-compatible API, using Python and boto3.
-
-### Silver
-
-Responsible for preparing the data for analytical use through:
-
-- Data cleaning and standardization.
-- Handling missing and inconsistent values.
-- Data type corrections.
-- Business-rule implementation.
-- Data quality improvements.
-
-Transformations are implemented using Python and PySpark.
-
-### Gold
-
-Contains business-oriented datasets designed to support analytical queries and reporting.
-
-Current analytical models include:
-
-| Dataset | Grain | Description |
-|---|---|---|
-| `full_order` | One row per order | Order-level metrics enriched with customer, item, payment, and review information |
-| `full_logistics` | Logistics analytical grain | Logistics-related metrics and attributes |
-| `dim_customers` | One row per customer | Customer behavior, spending, location, and review metrics |
-| `dim_products` | One row per product | Product attributes, sales metrics, and review information |
-| `dim_sellers` | One row per seller | Seller-level analytical attributes and metrics |
-
-Gold transformations use SQL and Databricks Materialized Views.
+The source CSV files are hosted in Supabase Storage and accessed through its S3-compatible API.
 
 ## Repository Structure
 
@@ -107,8 +114,8 @@ Gold transformations use SQL and Databricks Materialized Views.
 olist-end-to-end/
 │
 ├── transformations/
-│   │
-│   ├── Ingestion.py
+│   ├── bronze/
+│   │   └── Ingestion.py
 │   │
 │   ├── silver/
 │   │   ├── customers.py
@@ -131,22 +138,11 @@ olist-end-to-end/
 └── README.md
 ```
 
-## Key Engineering Concepts
+## Execution Environment
 
-This project explores and applies several data engineering concepts:
+The transformations are developed for execution within a Databricks environment. The ingestion process requires Supabase Storage credentials configured through Databricks Secrets. Workspace-specific pipeline configuration is not included in this repository.
 
-- Medallion Architecture.
-- ELT pipeline design.
-- Distributed data processing with PySpark.
-- SQL-based analytical transformations.
-- Delta Lake tables.
-- Data modeling and dimensional modeling.
-- Data quality and consistency checks.
-- Aggregations and window functions.
-- Materialized Views.
-- Cloud object storage integration.
-- Git-based version control.
-
+Credentials and sensitive configuration values are intentionally excluded from version control.
 ---
 
 **Author:** [tamakkj](https://github.com/tamakkj)
